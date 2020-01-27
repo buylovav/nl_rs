@@ -20,10 +20,16 @@ struct NamedTree{
         {}
 };
 
+enum class USAGE{
+    ALL,
+    SCHEME
+};
+
 class Rewriter {
     std::mutex _mutex;
     std::atomic_bool _finished;
     std::deque<NamedTree> _forest;
+    USAGE _usage;
 
     void plant(NamedTree&& tree);
     std::pair<bool, NamedTree> uproot(bool finished);
@@ -31,7 +37,7 @@ class Rewriter {
     void write();
     void read(const std::string& file);
 public:
-    Rewriter();
+    Rewriter(USAGE usage);
     ~Rewriter();
     void process(const std::list<std::string>& list);
 };
