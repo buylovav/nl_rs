@@ -49,35 +49,48 @@ void Rewriter::write()
     do 
     {
         auto tree = uproot(_finished);
+        auto success(false);
         if (!tree.second.tree.empty())
         {            
             switch (_usage)
             {
             case USAGE::SCHEME:{
-                Tree json;                                
-                Tree jsubscribers;
+                try{
+                    Tree json;                                
+                    Tree jsubscribers;                 
+                    for (auto& subscribers : tree.second.tree.get_child("subscribers")){
+                        
+                            Tree jsubscriber;
+                        
+                            auto& attr = subscribers.second.get_child("<xmlattr>");                    
+                            jsubscriber.put("msisdn", attr.get_child("msisdn").data());
 
-                for (auto& subscribers : tree.second.tree.get_child("subscribers")){
-                    Tree jsubscriber;
-                    try{
-                    auto& attr = subscribers.second.get_child("<xmlattr>");                    
-                    jsubscriber.put("msisdn", attr.get_child("msisdn").data());
-
-                    jsubscriber.put("balance", subscribers.second.get_child("balance").data());  
-                    }catch(std::runtime_error& e){
-                        std::cout << "An error occurred: " << e.what() << std::endl;
-                    }
-                    jsubscribers.push_back(std::make_pair("", jsubscriber));
+                            jsubscriber.put("balance", subscribers.second.get_child("balance").data());  
+                            jsubscribers.push_back(std::make_pair("", jsubscriber));
+                                        
+                    }                 
+                    json.add_child("subscribers", jsubscribers);
+                    boost::property_tree::write_json(tree.second.name+".json", json);
+                    success=true;
+                }catch(std::runtime_error& e){
+                    std::cout << "An error occurred: " << e.what() << std::endl;
                 }
-                json.add_child("subscribers", jsubscribers);
-                boost::property_tree::write_json(tree.second.name+".json", json);
+                catch(...){
+                    std::cout << "Undefined error occured..." << std::endl;
+                }
             }
                 break;
             
             default:
-                boost::property_tree::write_json(tree.second.name+".json", tree.second.tree);
+                try{
+                    boost::property_tree::write_json(tree.second.name+".json", tree.second.tree);
+                    success=true;
+                }
+                catch(...){
+                    std::cout << "Undefined error occured..." << std::endl;
+                }
             }            
-            std::cout << "  " << tree.second.name+".json" << " is written" <<std::endl;
+            std::cout << (success ? "+":"x") << "   " << tree.second.name+".json is " << (success ? "":"NOT") << " written" <<std::endl;
         }
         else if (tree.first)//finished and empty
         {
