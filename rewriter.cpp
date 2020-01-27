@@ -3,7 +3,9 @@
 #include <future>
 #include <iostream>
 
-Rewriter::Rewriter()
+Rewriter::Rewriter(USAGE usage)
+    : _finished(false)
+    , _usage(usage)
 {}
 
 Rewriter::~Rewriter()
@@ -44,13 +46,37 @@ void Rewriter::process(const std::list<std::string>& files)
 
 void Rewriter::write()
 {
-    auto stop(false);
     do 
     {
         auto tree = uproot(_finished);
         if (!tree.second.tree.empty())
         {            
-            boost::property_tree::write_json(tree.second.name+".json", tree.second.tree);
+            switch (_usage)
+            {
+            case USAGE::SCHEME:{
+                Tree json;                                
+                Tree jsubscribers;
+
+                for (auto& subscribers : tree.second.tree.get_child("subscribers")){
+                    Tree jsubscriber;
+                    try{
+                    auto& attr = subscribers.second.get_child("<xmlattr>");                    
+                    jsubscriber.put("msisdn", attr.get_child("msisdn").data());
+
+                    jsubscriber.put("balance", subscribers.second.get_child("balance").data());  
+                    }catch(std::runtime_error& e){
+                        std::cout << "An error occurred: " << e.what() << std::endl;
+                    }
+                    jsubscribers.push_back(std::make_pair("", jsubscriber));
+                }
+                json.add_child("subscribers", jsubscribers);
+                boost::property_tree::write_json(tree.second.name+".json", json);
+            }
+                break;
+            
+            default:
+                boost::property_tree::write_json(tree.second.name+".json", tree.second.tree);
+            }            
             std::cout << "  " << tree.second.name+".json" << " is written" <<std::endl;
         }
         else if (tree.first)//finished and empty
@@ -68,7 +94,7 @@ void Rewriter::read(const std::string& file)
         boost::property_tree::read_xml(file, tree, boost::property_tree::xml_parser::trim_whitespace);
     }catch(boost::property_tree::xml_parser::xml_parser_error& e)
     {
-        std::string error (std::string("Cannot open a file \"")+e.what()+"\"\n");
+        std::string error (std::string("An error occurred: ")+e.what()+"\n");
         std::cout << error;
     }
     std::string name = file.substr(0, file.rfind('.'));
